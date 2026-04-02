@@ -31,8 +31,8 @@ def chamar_llm(prompt):
     resposta = client.chat.completions.create(
         model=MODEL,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": SYSTEM_PROMPT}, #Como conteúdo
+            {"role": "user", "content": prompt} #Explicando ou pedindo a necesidade de negócio
         ]
     )
     return resposta.choices[0].message.content
@@ -69,13 +69,18 @@ def exportar_markdown(arquitetura):
     return nome_arquivo
 
 # ---------------- Tools ----------------
+# Implementar tool do agente
 def gerar_topicos_arquitetura(projeto):
-    # TODO: Implementar tool do agente
-    pass
+    return chamar_llm(f"""
+    Gere os principais tópicos de uma arquitetura de solução para o seguinte projeto: 
+    {projeto}                  
+
+    Responda em lista objetiva.              
+    """)
 
 # ---------------- Agente ----------------
+# Implementar lógica do agente
 def agente_arquiteto(projeto):
-    # TODO: implementar lógica do agente
     pass
 
 # ---------------- Execução ----------------
