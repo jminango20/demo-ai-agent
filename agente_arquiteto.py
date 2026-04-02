@@ -79,9 +79,30 @@ def gerar_topicos_arquitetura(projeto):
     """)
 
 # ---------------- Agente ----------------
-# Implementar lógica do agente
+# Implementar lógica do agente - Toda a orquestação
 def agente_arquiteto(projeto):
-    pass
+    memoria = carregar_memoria()
+
+    if projeto in memoria:
+        print("Arquitetura recuperada da memória")
+        return memoria[projeto]
+    
+    print("Analisando o projeto... ")
+    topicos = gerar_topicos_arquitetura(projeto=projeto) #Tool
+
+    arquitetura = {
+        "projeto": projeto,
+        "criacao": datetime.now().isoformat(),
+        "arquitetura_sugerida": topicos
+    }
+
+    exportar_markdown(arquitetura=arquitetura)
+    memoria[projeto] = arquitetura
+
+    salvar_memoria(memoria=memoria)
+
+    return arquitetura
+
 
 # ---------------- Execução ----------------
 if __name__ == "__main__":
