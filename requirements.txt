@@ -8,3 +8,4 @@ langchain-ollama
 pypdf
 python-multipart
 ollama
+openai
