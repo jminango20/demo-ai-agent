@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.pyc
 
 # Virtual environment
 .venv/
@@ -23,6 +24,8 @@ env/
 # ================================
 memoria_agente.json
 *.md
+!README.md
+!app/README.md
 
 # ================================
 # Logs
