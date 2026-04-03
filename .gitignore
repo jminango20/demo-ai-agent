@@ -26,6 +26,7 @@ memoria_agente.json
 *.md
 !README.md
 !app/README.md
+!app/notas-rag.md
 
 # ================================
 # Logs
