@@ -39,3 +39,12 @@ memoria_agente.json
 # Outros
 # ================================
 .env
+
+# Chroma database
+chroma/
+
+# Documentos de datos (si son privados)
+data/docs/
+
+# Venv
+.venv/
