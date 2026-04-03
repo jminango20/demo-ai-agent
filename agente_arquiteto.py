@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
 from openai import OpenAI
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
 
 # ---------------- Configuração LLM ----------------
 client = OpenAI(
@@ -10,20 +12,21 @@ client = OpenAI(
 
 MODEL = "mistral:latest"
 MEMORIA_ARQUIVO = "memoria_agente.json"
+CHROMA_PATH = "chroma"
 
-# TODO: definir o papel do agente arquiteto
 SYSTEM_PROMPT = """
 Você é um Arquiteto de Soluções Sênior.
 
 Responsabilidades:
-- Traduzir requisios de négocio em arquitetura técnica
-- Propor arquitetura em alto nível
+- Traduzir requisitos de negócio em arquitetura técnica
+- Propor arquitetura em alto nível baseada em padrões reais
 - Produzir documentação objetiva e corporativa
 
 Restrições:
 - Não detalhar código
 - Não assumir ferramentas proprietárias sem solicitação
 - Priorizar clareza arquitetural
+- Basear-se nos padrões e documentos fornecidos como contexto
 """
 
 # ---------------- LLM ----------------
@@ -31,8 +34,8 @@ def chamar_llm(prompt):
     resposta = client.chat.completions.create(
         model=MODEL,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT}, #Como conteúdo
-            {"role": "user", "content": prompt} #Explicando ou pedindo a necesidade de negócio
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
         ]
     )
     return resposta.choices[0].message.content
@@ -49,60 +52,100 @@ def salvar_memoria(memoria):
     with open(MEMORIA_ARQUIVO, "w") as f:
         json.dump(memoria, f, indent=2, ensure_ascii=False)
 
-# ---------------- Tools ----------------
+# ---------------- Tool: RAG ----------------
+def buscar_contexto_rag(projeto):
+    try:
+        embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        db = Chroma(
+            persist_directory=CHROMA_PATH,
+            embedding_function=embeddings
+        )
+        docs = db.similarity_search(query=projeto, k=4)
+
+        if not docs:
+            print("Nenhum contexto encontrado no RAG.")
+            return ""
+
+        print(f"{len(docs)} documentos relevantes encontrados no RAG.")
+        return "\n\n".join([doc.page_content for doc in docs])
+
+    except Exception as e:
+        print(f"RAG indisponível: {e}")
+        return ""
+
+# ---------------- Tool: Gerar Arquitetura ----------------
+def gerar_topicos_arquitetura(projeto):
+    contexto = buscar_contexto_rag(projeto)
+
+    if contexto:
+        prompt = f"""
+        Use o contexto abaixo como referência para propor
+        uma arquitetura para o projeto.
+
+        Contexto (padrões e referências internas):
+        {contexto}
+
+        Projeto:
+        {projeto}
+
+        Responda em lista objetiva.
+        """
+    else:
+        prompt = f"""
+        Gere os principais tópicos de uma arquitetura de solução
+        para o seguinte projeto:
+
+        {projeto}
+
+        Responda em lista objetiva.
+        """
+
+    return chamar_llm(prompt)
+
+# ---------------- Tool: Exportar Markdown ----------------
 def exportar_markdown(arquitetura):
     nome_arquivo = arquitetura["projeto"].replace(" ", "_") + ".md"
 
     with open(nome_arquivo, "w", encoding="utf-8") as f:
-        f.write(f"""
-# Arquitetura do Projeto
+        f.write(f"""# Arquitetura do Projeto
 
-## 📌 Projeto
+## Projeto
 {arquitetura['projeto']}
 
-## 🕒 Data de Criação
+## Data de Criação
 {arquitetura['criacao']}
 
-## 🧩 Arquitetura Sugerida
+## Arquitetura Sugerida
 {arquitetura['arquitetura_sugerida']}
+
+## Contexto Utilizado
+{'RAG (documentos internos)' if arquitetura.get('usou_rag') else 'Conhecimento geral do LLM'}
 """)
     return nome_arquivo
 
-# ---------------- Tools ----------------
-# Implementar tool do agente
-def gerar_topicos_arquitetura(projeto):
-    return chamar_llm(f"""
-    Gere os principais tópicos de uma arquitetura de solução para o seguinte projeto: 
-    {projeto}                  
-
-    Responda em lista objetiva.              
-    """)
-
 # ---------------- Agente ----------------
-# Implementar lógica do agente - Toda a orquestação
 def agente_arquiteto(projeto):
     memoria = carregar_memoria()
 
     if projeto in memoria:
-        print("Arquitetura recuperada da memória")
+        print("Arquitetura recuperada da memória.")
         return memoria[projeto]
-    
-    print("Analisando o projeto... ")
-    topicos = gerar_topicos_arquitetura(projeto=projeto) #Tool
+
+    print("Analisando o projeto...")
+    topicos = gerar_topicos_arquitetura(projeto)
 
     arquitetura = {
         "projeto": projeto,
         "criacao": datetime.now().isoformat(),
-        "arquitetura_sugerida": topicos
+        "arquitetura_sugerida": topicos,
+        "usou_rag": True
     }
 
-    exportar_markdown(arquitetura=arquitetura)
+    exportar_markdown(arquitetura)
     memoria[projeto] = arquitetura
-
-    salvar_memoria(memoria=memoria)
+    salvar_memoria(memoria)
 
     return arquitetura
-
 
 # ---------------- Execução ----------------
 if __name__ == "__main__":
